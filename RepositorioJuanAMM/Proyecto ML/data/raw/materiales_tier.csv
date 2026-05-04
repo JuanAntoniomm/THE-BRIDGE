@@ -1,0 +1,13 @@
+material_montura,categoria_material,gama_material,peso_relativo
+Pasta,acetato,media,ligero
+Acetato,acetato,media,ligero
+Metal,metal,media_alta,medio
+Metal/Pasta,mezcla,media,medio
+Eco-friendly - Econyl,eco_friendly,media,ligero
+Titanio,titanio,alta,ligero
+Nylon,poliamida,media,ligero
+Eco-friendly - Eco-poliamida,eco_friendly,media,ligero
+Propionato,propionato,media,ligero
+Eco-friendly - Bio-acetato,eco_friendly,media,ligero
+Eco-friendly - Bio-based,eco_friendly,media,medio
+Eco-friendly - Eco Co-poliéster,eco_friendly,media,ligero
