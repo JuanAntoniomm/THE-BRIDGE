@@ -2,9 +2,15 @@
 training.py
 ===========
 
-Entrena el modelo final (RandomForest) sobre el dataset procesado y lo guarda
-en `models/final_model.pkl`. También genera los splits train/test que usa
-`evaluation.py`.
+Entrena el modelo final (RandomForest) sobre el conjunto de entrenamiento ya
+procesado y lo guarda en `models/final_model.pkl`.
+
+IMPORTANTE — sobre el split:
+    El train/test split YA está hecho por `src/data_processing.py` (o por el
+    notebook 02), sobre los datos CRUDOS y antes de cualquier imputación, para
+    evitar fuga de datos. Por eso aquí NO se vuelve a partir el dataset: solo
+    se carga `data/train/train.csv` y se entrena. La evaluación contra
+    `data/test/test.csv` la hace `src/evaluation.py`.
 
 Replica la lógica de `notebooks/03_Modelado.ipynb` con las decisiones tomadas
 tras el análisis de ablaciones y VIF:
@@ -23,11 +29,9 @@ Uso:
     python src/training.py
 
 Inputs:
-    data/processed/lentiamo_graduadas_clean.csv
+    data/train/train.csv      (generado por src/data_processing.py)
 
 Outputs:
-    data/train/train.csv
-    data/test/test.csv
     models/final_model.pkl
 """
 
@@ -38,7 +42,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, KFold, train_test_split
+from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
@@ -46,16 +50,13 @@ from sklearn.preprocessing import OneHotEncoder
 # Constantes
 # ---------------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parent.parent
-PROC = ROOT / 'data' / 'processed'
 TRAIN = ROOT / 'data' / 'train'
-TEST = ROOT / 'data' / 'test'
 MODELS_DIR = ROOT / 'models'
 
-CSV_INPUT = PROC / 'lentiamo_graduadas_clean.csv'
+CSV_TRAIN = TRAIN / 'train.csv'
 MODEL_OUTPUT = MODELS_DIR / 'final_model.pkl'
 
 RANDOM_STATE = 42
-TEST_SIZE = 0.2
 CV_SPLITS = 5
 
 # Features finales (justificación en notebook 03 sec. 7-9)
@@ -103,30 +104,17 @@ def build_preprocessor(num_cols, cat_cols):
     )
 
 
-# ---------------------------------------------------------------------------
-# Pasos
-# ---------------------------------------------------------------------------
-def cargar_y_renombrar(path: Path) -> pd.DataFrame:
-    """Carga el dataset procesado y aplica renombre defensivo (por compatibilidad)."""
+def cargar_train(path: Path) -> pd.DataFrame:
+    """Carga train.csv (ya procesado) con renombre defensivo por compatibilidad."""
     df = pd.read_csv(path)
     rename_map = {'tier': 'gama_marca', 'segmento': 'segmento_comercial'}
     df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
-    print(f'Cargado: {path.name} → {df.shape}')
+    print(f'Cargado: {path.name} -> {df.shape}')
     return df
 
 
-def split_y_guardar(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    TRAIN.mkdir(parents=True, exist_ok=True)
-    TEST.mkdir(parents=True, exist_ok=True)
-    train_df, test_df = train_test_split(df, test_size=TEST_SIZE, random_state=RANDOM_STATE)
-    train_df.to_csv(TRAIN / 'train.csv', index=False)
-    test_df.to_csv(TEST / 'test.csv', index=False)
-    print(f'Split: train={len(train_df)} | test={len(test_df)}')
-    return train_df, test_df
-
-
 def entrenar_con_gridsearch(X_train: pd.DataFrame, y_train: pd.Series,
-                             num_cols: list, cat_cols: list) -> GridSearchCV:
+                            num_cols: list, cat_cols: list) -> GridSearchCV:
     pipe = Pipeline([
         ('prep', build_preprocessor(num_cols, cat_cols)),
         ('m',    RandomForestRegressor(random_state=RANDOM_STATE, n_jobs=-1)),
@@ -142,9 +130,9 @@ def entrenar_con_gridsearch(X_train: pd.DataFrame, y_train: pd.Series,
     )
     print('\nLanzando GridSearchCV (RandomForest)...')
     gs.fit(X_train, y_train)
-    print(f'\nMejores hiperparámetros:')
+    print('\nMejores hiperparámetros:')
     for k, v in gs.best_params_.items():
-        print(f'  · {k}: {v}')
+        print(f'  - {k}: {v}')
     print(f'MAE en CV (mejor): {-gs.best_score_:.2f} €')
     return gs
 
@@ -155,8 +143,11 @@ def entrenar_con_gridsearch(X_train: pd.DataFrame, y_train: pd.Series,
 def main() -> None:
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-    df = cargar_y_renombrar(CSV_INPUT)
-    train_df, _ = split_y_guardar(df)
+    if not CSV_TRAIN.exists():
+        raise FileNotFoundError(
+            f'Falta {CSV_TRAIN}. Ejecuta antes `python src/data_processing.py`.')
+
+    train_df = cargar_train(CSV_TRAIN)
 
     num_cols = existing(NUM_FINAL, train_df)
     cat_cols = existing(CAT_FINAL, train_df)
@@ -170,7 +161,7 @@ def main() -> None:
     gs = entrenar_con_gridsearch(X_train, y_train, num_cols, cat_cols)
 
     joblib.dump(gs.best_estimator_, MODEL_OUTPUT)
-    print(f'\n✅ Modelo guardado: {MODEL_OUTPUT}')
+    print(f'\nModelo guardado: {MODEL_OUTPUT}')
 
 
 if __name__ == '__main__':

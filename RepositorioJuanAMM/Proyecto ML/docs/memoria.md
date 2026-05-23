@@ -11,7 +11,7 @@ Autor: Juan Antonio M. M.
 
 Este proyecto desarrolla un modelo de Machine Learning capaz de **estimar el precio de mercado de unas gafas graduadas** a partir de sus atributos (marca, material, medidas, género, color, etc.). El caso de uso planteado es el de una óptica que necesita una herramienta de *pricing* asistido para fijar precios competitivos a nuevas referencias de su catálogo.
 
-El dataset se construyó mediante webscraping ético del catálogo de **Lentiamo España**, obteniendo 2.875 productos con 16 variables. Tras un proceso completo de limpieza, EDA, enriquecimiento experto y feature engineering, se compararon 7 modelos en validación cruzada y el ganador (RandomForest) se evaluó en test obteniendo un **MAE de 17.78 €** y un **R² de 0.84** sobre un rango de precio de mercado de 19 € a 480 €.
+El dataset se construyó mediante webscraping ético del catálogo de **Lentiamo España**, obteniendo 2.875 productos con 16 variables. Tras un proceso completo de limpieza, EDA, enriquecimiento experto y feature engineering, se compararon 7 modelos en validación cruzada y el ganador (RandomForest) se evaluó en test obteniendo un **MAE de 17.18 €** y un **R² de 0.87** sobre un rango de precio de mercado de 19 € a 480 €.
 
 El proyecto demuestra rigor metodológico (Pipelines + ColumnTransformer, GridSearchCV, ablaciones de variables, análisis VIF) y aporta una pieza diferencial: el **enriquecimiento del dataset con conocimiento experto de marcas y materiales** generado vía LLMs (Perplexity + NotebookLM), que convierte conocimiento del mundo real en features predictivas.
 
@@ -57,11 +57,13 @@ Para cada producto se extrajeron 16 variables: identificadores (url, modelo), at
 
 ## 4. Limpieza y exploración (EDA)
 
-### 4.1. Limpieza inicial
+### 4.1. Split train/test y limpieza inicial
+
+El **split train/test (80/20) es la primera operación del notebook 02**, antes de cualquier limpieza, imputación o feature engineering. Se hace así de forma deliberada para evitar *fuga de datos* (*data leakage*): cualquier estadístico que el preprocesado necesite aprender —medianas de imputación, modas, `precio_medio_marca`— se calcula **solo sobre train** y después se aplica sin recalcular sobre test. Así el conjunto de test permanece como una muestra verdaderamente no vista hasta la evaluación final.
 
 - Drop de columnas no útiles (`url`, `tipo`, `polarizadas` siempre vacía en graduadas).
-- Drop de duplicados por modelo y de filas con `precio` o `marca` nulos. La limpieza redujo el dataset de 2.875 a ~2.871 filas (apenas 4 filas eliminadas — los datos venían muy limpios del scraping).
-- Imputación inteligente de los ~5 % de NaN en medidas: mediana **dentro de cada marca** (las marcas tienen tamaños típicos), con fallback a mediana global. Categóricas imputadas por moda.
+- Drop de duplicados por modelo y de filas con `precio` o `marca` nulos. La limpieza redujo el dataset de 2.875 a 2.870 filas (5 filas eliminadas — los datos venían muy limpios del scraping).
+- Imputación inteligente de los ~5 % de NaN en medidas: mediana **dentro de cada marca** (las marcas tienen tamaños típicos), con fallback a mediana global. Categóricas imputadas por moda. Todas estas medianas y modas se **aprenden del train y se reaplican sobre test**, nunca al revés.
 
 ### 4.2. Reducción de multicolinealidad
 
@@ -156,20 +158,20 @@ Sobre este set se ejecutó `GridSearchCV` para hiperparámetros (`alpha` en Ridg
 
 ## 8. Resultados
 
-Los dos finalistas (Ridge en log y RandomForest en €) se evaluaron **una sola vez** en el conjunto de test (20 % del total = 575 productos).
+Los dos finalistas (Ridge en log y RandomForest en €) se evaluaron **una sola vez** en el conjunto de test (20 % del total = 575 productos), un conjunto separado al inicio del pipeline y no usado en ninguna fase de entrenamiento ni de selección de modelo.
 
 | Modelo                                 | MAE (€) | RMSE (€) |   R²  | MAPE (%) |
 |----------------------------------------|--------:|---------:|------:|---------:|
-| Ridge (log) — finalista lineal         |  21.02  |   30.64  | 0.81  |  17.35   |
-| **RandomForest — finalista árboles**   | **17.78** | **27.78** | **0.84** | **14.75** |
+| Ridge (log) — finalista lineal         |  20.59  |   28.73  | 0.84  |  17.03   |
+| **RandomForest — finalista árboles**   | **17.18** | **25.85** | **0.87** | **15.11** |
 
 ### 8.1. Lectura de los resultados
 
-- **MAE = 17.78 €** sobre una mediana de mercado de 114 €: el modelo se equivoca en promedio ~16 % del precio. Para un caso de pricing asistido en óptica es una precisión muy razonable — quedaría dentro del margen típico de negociación con el fabricante o de ajuste manual del responsable de catálogo.
-- **R² = 0.84**: el modelo explica el 84 % de la varianza del precio, lo que confirma que las features capturan los drivers reales (marca, materiales, medidas, gama).
-- **MAPE = 14.75 %**: el error relativo medio es bajo, y se distribuye de forma equilibrada entre productos baratos y premium (gracias a la decisión de no winsorizar).
-- **RandomForest gana al lineal en todas las métricas** (~3 € menos de MAE, ~3 € menos de RMSE, +0.03 de R², ~2.6 puntos menos de MAPE). La diferencia confirma que el problema tiene interacciones no-lineales (marca × material × tamaño) que el modelo lineal no captura aunque trabaje en log.
-- **El RMSE (27.78 €) es ~56 % mayor que el MAE (17.78 €)**, lo que indica una distribución de errores con cola: la mayoría de predicciones están muy cerca del valor real, pero hay un puñado de casos extremos. Coincide con el análisis cualitativo de los top-10 errores absolutos: suelen ser ediciones limitadas o productos con descuentos puntuales no codificados en el modelo.
+- **MAE = 17.18 €** sobre una mediana de mercado de 114 €: el modelo se equivoca en promedio ~15 % del precio. Para un caso de pricing asistido en óptica es una precisión muy razonable — quedaría dentro del margen típico de negociación con el fabricante o de ajuste manual del responsable de catálogo.
+- **R² = 0.87**: el modelo explica el 87 % de la varianza del precio, lo que confirma que las features capturan los drivers reales (marca, materiales, medidas, gama).
+- **MAPE = 15.11 %**: el error relativo medio es bajo, y se distribuye de forma equilibrada entre productos baratos y premium (gracias a la decisión de no winsorizar).
+- **RandomForest gana al lineal en todas las métricas** (~3.4 € menos de MAE, ~2.9 € menos de RMSE, +0.03 de R², ~1.9 puntos menos de MAPE). La diferencia confirma que el problema tiene interacciones no-lineales (marca × material × tamaño) que el modelo lineal no captura aunque trabaje en log.
+- **El RMSE (25.85 €) es ~50 % mayor que el MAE (17.18 €)**, lo que indica una distribución de errores con cola: la mayoría de predicciones están muy cerca del valor real, pero hay un puñado de casos extremos. Coincide con el análisis cualitativo de los top-10 errores absolutos: suelen ser ediciones limitadas o productos con descuentos puntuales no codificados en el modelo.
 
 El modelo final está serializado en `models/final_model.pkl` y se carga con `joblib.load` en cualquier script o app downstream.
 
@@ -237,10 +239,10 @@ Proyecto ML/
 Desde la raíz del proyecto:
 
 ```bash
-# 1. Procesar datos crudos → dataset limpio
+# 1. Procesar datos crudos → split train/test + dataset limpio
 python src/data_processing.py
 
-# 2. Entrenar modelo final + generar splits
+# 2. Entrenar el modelo final con GridSearch
 python src/training.py
 
 # 3. Evaluar en test
