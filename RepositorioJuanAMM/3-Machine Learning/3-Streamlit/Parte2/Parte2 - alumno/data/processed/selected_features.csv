@@ -1,0 +1,10 @@
+,visual,filter,modelo,rfe,voting,pca
+0,Fossil Gas,Fossil Gas,Fossil Gas,Fossil Gas,Fossil Gas,0.5540913699972224
+1,Hydro Pumped Storage.1,Fossil Hard coal,Fossil Hard coal,Fossil Oil,Hydro Pumped Storage.1,0.19020415188579196
+2,Nuclear,Fossil Oil,Fossil Oil,Hydro Pumped Storage.1,Nuclear,0.11190919796286454
+3,flow_fr_es,Hydro Pumped Storage.1,Hydro Pumped Storage.1,Hydro Run-of-river and poundage,Waste,0.0600357928159976
+4,flow_es_fr,Hydro Run-of-river and poundage,Hydro Run-of-river and poundage,Nuclear,Fossil Oil,0.042895688041086025
+5,Waste,Nuclear,Nuclear,Waste,Fossil Hard coal,0.016205893380134277
+6,Fossil Hard coal,,Waste,,,0.009978460973266023
+7,,,flow_es_fr,,,0.005384234040096029
+8,,,flow_es_pt,,,0.004175448344129144

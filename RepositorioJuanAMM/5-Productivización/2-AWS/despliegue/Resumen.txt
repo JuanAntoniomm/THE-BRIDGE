@@ -1,0 +1,81 @@
+rm -d -r
+sudo apt-get install python3.13-venv
+
+xxx
+
+sudo apt-get update
+sudo apt-get install python3-venv
+
+prod/repo_prod  endpoint
+
+cd endpoint
+
+ln -s ../repo_prod/app.py
+ln -s ../repo_prod/iri.pkl
+
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install Flask
+pip install scikit-learn
+
+python app.py
+
+otro putty - conexión - curl 127.0.0.1:5000/ (me conecto desde otro putty a Estocolmo)
+
+cerramos putty2 y en putty1 pip install gunicorn
+
+mkdir logs
+
+sudo nano gunicorn.conf.py
+
+doc
+
+/home/ubuntu/prod/endpoint/venv/bin/gunicorn -c /home/ubuntu/prod/endpoint/gunicorn.conf.py app:app
+
+otro putty
+curl 127.0.0.1:8000
+
+parar putty gunicorn
+
+cd /etc/systemd/system
+
+sudo nano clase.service  (clase es "prod")
+doc
+sudo systemctl daemon-reload
+sudo systemctl start clase.service
+sudo systemctl enable clase.service
+sudo systemctl status clase.service
+
+
+sudo apt-get install nginx
+cd /etc/nginx
+ls
+
+me interesan available y enabled
+cd sites-available
+sudo nano clase
+
+    server {
+     listen 80;
+     server_name 18.223.239.177;
+     location / {
+      proxy_pass http://127.0.0.1:8000;
+     }
+    }
+
+cd ..
+
+cd sites-enabled
+sudo ln -s ../sites-available/clase
+
+sudo systemctl start nginx
+
+sudo systemctl enable nginx
+
+sudo systemctl status nginx
+
+sudo systemctl stop nginx
+
+sudo systemctl start nginx

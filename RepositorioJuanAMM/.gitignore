@@ -1,0 +1,40 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Variables de entorno / credenciales
+.env
+.env.*
+
+# Modelos entrenados (archivos binarios grandes)
+*.keras
+*.h5
+*.pkl
+*.joblib
+
+# Archivos binarios de TensorFlow/compiled libs
+*.dll
+*.so
+*.pyd
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Archivos de versión de uv/pyenv
+.python-version
+
+# Bases de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
